@@ -117,9 +117,9 @@ def parse_mailman_htmlthread(filename):
             if child.tag == 'strong':
                 # url with to the actual email
                 a_el = child.getchildren()[0]
-                container.message = Message()
-                container.message.subject = a_el.text
-                container.message.message_idx = int(a_el.get('name'))
+                container['message'] = Message()
+                container['message'].subject = a_el.text
+                container['message'].message_idx = int(a_el.get('name'))
             elif child.tag == 'em':
                 pass  # email sender, ignore this line
             elif child.tag == 'ul':

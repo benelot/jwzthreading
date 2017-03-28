@@ -538,10 +538,13 @@ def thread(messages, group_by_subject=True):
 
 def print_container(ctr, depth=0, debug=0):
     """Print summary of Thread to stdout."""
-    if debug:
-        message = repr(ctr) + ' ' + repr(ctr.message and ctr.message.subject)
+    if 'message' in ctr:
+        if debug:
+            message = repr(ctr) + ' ' + repr(ctr['message'] and ctr['message'].subject)
+        else:
+            message = str(ctr['message'] and ctr['message'].subject)
     else:
-        message = str(ctr.message and ctr.message.subject)
+        message = str(ctr)
 
     print(''.join(['> ' * depth, message]))
 

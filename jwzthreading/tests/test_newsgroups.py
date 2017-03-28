@@ -96,17 +96,17 @@ def test_threading_fedora_June2010():
     # at  https://www.redhat.com/archives/fedora-devel-list/2010-January/thread.html
     # Mailman handles this differently, which is visually better but
     # JWZ is technically more correct IMO, just removing this case for now.
-    assert sum([el.message is None for el in threads]) == 1
+    assert sum([el.get('message') is None for el in threads]) == 1
 
     # remove the problematic thread (cf above)
-    threads = [el for el in threads if el.message is not None]
-    threads_ref = [el for el in threads_ref if el.message.message_idx != 3]
+    threads = [el for el in threads if el.get('message') is not None]
+    threads_ref = [el for el in threads_ref if el['message'].message_idx != 3]
 
 
     # JWZ currently uncorrectly threads <Possible follow up> of the
     # "Common Lisp apps in Fedora," thread, remove the wrongly threaded
     # containers
-    threads = [el for el in threads if el.message.message_idx not in [153, 285]]
+    threads = [el for el in threads if el.get('message').message_idx not in [153, 285]]
 
 
     #n_ok = 0
@@ -115,14 +115,14 @@ def test_threading_fedora_June2010():
 
     for idx, container_ref in enumerate(threads_ref):
         container = threads[idx]
-        if container.message is not None:
-            subject = container.message.subject
-            message_idx = container.message.message_idx
+        if container.get('message') is not None:
+            subject = container['message'].subject
+            message_idx = container['message'].message_idx
         else:
             subject = None
             message_idx = None
 
-        assert container_ref.message.message_idx == message_idx
+        assert container_ref['message'].message_idx == message_idx
 
         if message_idx == 55:
             # This is the "Common Lisp apps in Fedora" thread that has
@@ -133,8 +133,8 @@ def test_threading_fedora_June2010():
 
         # check that we have the same messages in threads
         if NUMPY_PRESENT:
-            assert_array_equal([el.message.message_idx for el in container_ref.flatten()],
-                         [el.message.message_idx for el in container.flatten()])
+            assert_array_equal([el['message'].message_idx for el in container_ref.flatten()],
+                         [el['message'].message_idx for el in container.flatten()])
             assert_array_equal([el.depth for el in container_ref.flatten()],
                          np.fmin([el.depth for el in container.flatten()], MAILMAN_MAX_DEPTH))
     #        print(idx, '   [OK]')
@@ -186,11 +186,11 @@ def test_empty_collapsing_fedora_June2010():
     threads = thread([Message(el, message_idx=idx) for idx, el in enumerate(msglist)],
                      group_by_subject=False)
     # There is one single "empty root container"
-    assert sum([el.message is None for el in threads]) == 1
+    assert sum([el.get('message') is None for el in threads]) == 1
 
     threads = [el.collapse_empty() for el in threads]
 
     # The empty container was removed
-    assert sum([el.message is None for el in threads]) == 0
+    assert sum([el.get('message') is None for el in threads]) == 0
 
     assert sum([el.parent is None for el in threads]) == len(threads)

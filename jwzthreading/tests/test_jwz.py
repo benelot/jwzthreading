@@ -54,6 +54,16 @@ def test_container():
     c2.add_child(c3)
     assert c3.parent == c2
 
+def test_double_container():
+    c = Container()
+
+    c2 = Container()
+    c3 = Container()
+    c.add_child(c2)
+    c.add_child(c3)
+    assert c.has_descendant(c2)
+    assert c.has_descendant(c3)
+
 def test_deep_container():
     """Build a 100-deep list of nested Containers."""
 
@@ -78,7 +88,6 @@ def test_deep_container():
     assert L[-1].depth == N
 
     assert L[-1].root == L[0]
-    
 
 
 def test_unique():
@@ -133,7 +142,7 @@ def test_prune_empty():
 def test_prune_promote():
     p = Container()
     c1 = Container()
-    c1.message = Message()
+    c1['message'] = Message()
     p.add_child(c1)
     assert prune_container(p) == [c1]
 
@@ -186,18 +195,18 @@ def test_sorting():
     d = thread([m2, m1, m3], group_by_subject=False)
 
     d_s = sort_threads(d, key='message_id', missing=-1)
-    assert d_s[0].message.message_id is None
-    assert d_s[1].message.message_id == 1
+    assert d_s[0]['message'].message_id is None
+    assert d_s[1]['message'].message_id == 1
     d_s = sort_threads(d, key='subject', missing='z')
-    assert d_s[0].message.message_id == 2
-    assert d_s[1].message.message_id == 1
+    assert d_s[0]['message'].message_id == 2
+    assert d_s[1]['message'].message_id == 1
 
 def test_thread_single():
     """Thread a single message."""
     m = Message(None)
     m.subject = m.message_id = 'Single'
     d = thread([m])
-    assert d[0].message == m
+    assert d[0]['message'] == m
 
 def test_thread_unrelated():
     """Thread two unconnected messages."""
@@ -206,9 +215,9 @@ def test_thread_unrelated():
     m2 = Message(None)
     m2.subject = m2.message_id = 'Second'
     d = thread([m1, m2], group_by_subject=False)
-    assert d[0].message == m1
+    assert d[0]['message'] == m1
     assert d[1].children == []
-    assert d[1].message == m2
+    assert d[1]['message'] == m2
 
 def test_thread_two():
     """Thread two messages together."""
@@ -218,9 +227,9 @@ def test_thread_two():
     m2.subject = m2.message_id = 'Second'
     m2.references = ['First']
     d = thread([m1, m2])
-    assert d[0].message == m1
+    assert d[0]['message'] == m1
     assert len(d[0].children) == 1
-    assert d[0].children[0].message == m2
+    assert d[0].children[0]['message'] == m2
 
 def test_thread_two_reverse():
     "Thread two messages together, with the child message listed first."
@@ -230,9 +239,9 @@ def test_thread_two_reverse():
     m2.subject = m2.message_id = 'Second'
     m2.references = ['First']
     d = thread([m2, m1], group_by_subject=False)
-    assert d[0].message == m1
+    assert d[0]['message'] == m1
     assert len(d[0].children) == 1
-    assert d[0].children[0].message == m2
+    assert d[0].children[0]['message'] == m2
 
 def test_thread_lying_message():
     "Thread three messages together, with other messages lying in their references."
@@ -254,11 +263,11 @@ def test_thread_lying_message():
     #lying_after_m.references = ['Dummy parent','Third', 'Second', 'First']
     d = thread([dummy_parent_m, lying_before_m,
                 m1, m2, m3, lying_after_m], group_by_subject=False)
-    assert d[1].message == m1
+    assert d[1]['message'] == m1
     assert len(d[1].children) == 1
-    assert d[1].children[0].message == m2
+    assert d[1].children[0]['message'] == m2
     assert len(d[1].children[0].children) == 1
-    assert d[1].children[0].children[0].message == m3
+    assert d[1].children[0].children[0]['message'] == m3
 
 def test_thread_two_missing_parent():
     "Thread two messages, both children of a missing parent."
@@ -271,14 +280,14 @@ def test_thread_two_missing_parent():
     m2.message_id = 'Second'
     m2.references = ['parent']
     d = thread([m1, m2])
-    assert d[0].message == None
+    assert d[0]['message'] == None
     assert len(d[0].children) == 2
-    assert d[0].children[0].message == m1
+    assert d[0].children[0]['message'] == m1
     assert d[0].size == 3
 
     # check that collapsing the empty container works
     container = d[0].collapse_empty()
     assert container.size == 2
-    assert container.message is not None
-    assert container.message.message_id == 'First'
+    assert container['message'] is not None
+    assert container['message'].message_id == 'First'
     assert container.parent is None

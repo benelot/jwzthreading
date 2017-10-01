@@ -3,9 +3,11 @@ try:
 except ImportError:
     from distutils.core import setup
 
+from jwzthreading.jwzthreading import __version__
+
 kw = {
     'name': 'jwzthreading',
-    'version': '0.95',
+    'version': __version__,
     'description': 'Algorithm for threading mail messages.',
     'long_description' : '''Contains an implementation of an algorithm for threading mail
 messages, as described at http://www.jwz.org/doc/threading.html.''',

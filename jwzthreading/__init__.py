@@ -7,6 +7,6 @@ from __future__ import unicode_literals
 
 from .jwzthreading import (Message, thread, unique, Container,
                            print_container, prune_container,
-                           sort_threads)
+                           sort_threads, __version__)
 
 from . import utils

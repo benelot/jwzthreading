@@ -546,7 +546,7 @@ def thread(messages, group_by_subject=True):
             new.add_child(container)
             subject_table[subj] = new
 
-    return list(subject_table.values())
+    return subject_table
 
 
 def print_container(ctr, depth=0, debug=0):

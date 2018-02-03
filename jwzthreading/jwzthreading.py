@@ -9,8 +9,7 @@ To use:
 
   Create a bunch of Message instances, one per message to be threaded,
   filling in the .subject, .message_id, and .references attributes.
-  You can use the .message attribute to record the RFC-822 message object,
-  or some other piece of information for your own purposes.
+  Set the .message attribute to the corresponding RFC-822 message object (email.message).
 
   Call the thread() function with a list of the Message instances.
 
@@ -19,7 +18,7 @@ To use:
   message.  You'll probably want to sort these children by date, subject,
   or some other criterion.
 
-Copyright (c) 2003-2016, A.M. Kuchling.
+Copyright (c) 2003-2018, A.M. Kuchling.
 
 This code is under a BSD-style license; see the LICENSE file for details.
 """
@@ -31,7 +30,7 @@ import sys
 
 __all__ = ['Message', 'thread']
 
-__version__ = "0.96"
+__version__ = "0.97"
 
 #
 # constants
@@ -73,7 +72,7 @@ class Container(dict):
     @property
     def is_dummy(self):
         """Check if the container has some content."""
-        return not len(self.keys())
+        return self["message"] is None
 
     def add_child(self, child):
         """Add a child to the container
@@ -135,7 +134,6 @@ class Container(dict):
         """Recursively count the number of children containers.
         The current container is also included in the count.
         """
-
         return 1 + sum([child.tree_size for child in self.children])
 
     @property
@@ -146,6 +144,19 @@ class Container(dict):
             return 0
         else:
             return 1 + self.parent.current_depth
+
+    @property
+    def tree_depth(self):
+        """Compute the depth of the tree below the current container"""
+
+        children_depth = 0
+        if len(self.children) != 0:
+            for child in self.children:
+                d = child.tree_depth
+                if children_depth < d:
+                    children_depth = d
+
+        return children_depth + 1
 
     def flatten(self):
         """ Return a flatten version of the hierarchical tree
@@ -167,7 +178,7 @@ class Container(dict):
 
         Returns
         -------
-        Containe: the top most level container
+        Container: the top most level container
         """
 
         if self.parent is None:
@@ -267,8 +278,8 @@ class Message(object):
             header.
         references ([str]): List of message IDs from the In-Reply-To
             and References headers.
-        message (any): Can contain information for the caller's use
-            (e.g. an RFC-822 message object).
+        message (any): email message object (e.g. an RFC-822 message object
+            https://docs.python.org/3/library/email.message.html).
     """
     message = None
     message_id = None
@@ -309,7 +320,7 @@ class Message(object):
 
         self.subject = subject
 
-        # Get In-Reply-To: header and add it to references
+        # get In-Reply-To: header and add it to references
         msg_id = MSGID_RE.search(msg.get('In-Reply-To', ''))
         if msg_id:
             msg_id = msg_id.group(1)
@@ -322,6 +333,7 @@ class Message(object):
 #
 # functions
 #
+
 
 def unique(alist):
     result = OrderedDict()
@@ -356,7 +368,7 @@ def prune_container(container):
         # step 4 (a) - nuke empty containers
         return []
     elif container.get('message') is None and (
-        len(container.children) == 1 or container.parent is not None):
+            len(container.children) == 1 or container.parent is not None):
         # step 4 (b) - promote children
         children = container.children[:]
         for child in children:
@@ -366,34 +378,36 @@ def prune_container(container):
         # Leave this node in place
         return [container]
 
-def sort_threads(threads, key='message_idx', missing=-1, reverse=False):
+
+def sort_threads(threads, key, missing_value, reverse=False):
     """Sort threaded emails based on their root element
 
     Arguments:
-        messages ([Container]): List of Container items
-        group_by_subject (bool): Group root set by subject
-               step 5 of the JWZ algorithm.
+        threads ([Container]): List of Container items
         key (str or None): optional sorting order for threads
                Valid values are "message_id", "subject", "message_idx" 
-        missing (None): if the container has no message,
+        missing_value (str): if the container has no key,
                replace it with this value
         reverse (book): reverse the order
     Returns:
         list ([Container]): sorted list of containers
     """
 
-    def _sort_func(el):
+    def _sort_func(container):
 
-        if el.get('message') is None:
-            val = missing
+        if key == 'depth':
+            return container.tree_depth
+
+        if container.get('message') is None:
+            val = missing_value
         else:
-            val = getattr(el.get('message'), key)
+            val = getattr(container.get('message'), key)
         if val is None:
-            val = missing
+            val = missing_value
         return val
 
-    if key in ['message_id', 'subject', 'message_idx']:
-        threads = sorted(threads, key=_sort_func)
+    if key in ['message_id', 'subject', 'message_idx', 'depth']:
+        threads = sorted(threads, key=_sort_func, reverse=reverse)
     else:
         raise ValueError('Wrong input argument `sort_by`={}'.format(key))
     return threads
@@ -442,13 +456,13 @@ def thread(messages, group_by_subject=True):
                 id_table[ref] = container
 
             if prev is not None:
-                #If they are already linked, don't change the existing links.
+                # If they are already linked, don't change the existing links.
                 if container.parent != None:
                     pass
                 # Don't add link if it would create a loop
                 elif container is this_container or \
-                     container.has_descendant(prev) or \
-                     prev.has_descendant(container):
+                        container.has_descendant(prev) or \
+                        prev.has_descendant(container):
                     pass
                 else:
                     prev.add_child(container)
@@ -456,14 +470,13 @@ def thread(messages, group_by_subject=True):
             prev = container
             ## print "Finished processing reference for "+repr(msg.message_id)+", container now: "
             ## print_container(container, 0, True)
-        #1C
+        # step one (c)
         if prev is not None:
             ##print "Setting parent of "+repr(this_container)+", to last reference: " + repr (prev)
             prev.add_child(this_container)
         else:
-            if(this_container.parent):
+            if this_container.parent:
                 this_container.parent.remove_child(this_container)
-        
 
     # step two - find root set
     root_set = [container for container in id_table.values()
@@ -474,7 +487,7 @@ def thread(messages, group_by_subject=True):
 
     # step four - prune empty containers
     for container in root_set:
-        assert container.parent == None
+        assert container.parent is None
 
     new_root_set = []
     for container in root_set:
@@ -505,13 +518,12 @@ def thread(messages, group_by_subject=True):
 
         existing = subject_table.get(subj, None)
         if (existing is None or
-            (existing.message is not None and
+            (existing.get("message") is not None and
              container.get('message') is None) or
-            (existing.message is not None and
+            (existing.get("message") is not None and
              container.get('message') is not None and
-             len(existing.message.subject) > len(container['message'].subject))):
+             len(existing.get("message").subject) > len(container['message'].subject))):
             subject_table[subj] = container
-
 
     # step five (c)
     for container in root_set:
@@ -534,10 +546,10 @@ def thread(messages, group_by_subject=True):
                 ctr.add_child(container)
             else:
                 container.add_child(ctr)
-        elif len(ctr.message.subject) < len(container['message'].subject):
+        elif len(ctr.get("message").subject) < len(container['message'].subject):
             # ctr has fewer levels of 're:' headers
             ctr.add_child(container)
-        elif len(ctr.message.subject) > len(container['message'].subject):
+        elif len(ctr.get("message").subject) > len(container['message'].subject):
             # container has fewer levels of 're:' headers
             container.add_child(ctr)
         else:
@@ -549,27 +561,54 @@ def thread(messages, group_by_subject=True):
     return list(subject_table.values())
 
 
+def get_content(msg, msg_length=60):
+    if msg is not None:
+        for part in msg.message.walk():
+            # each part is a either non-multipart, or another multipart message
+            # that contains further parts... Message is organized like a tree
+            if part.get_content_type() == 'text/plain':
+                return part.get_payload().replace('\n', ' ').replace('\r', '')[:msg_length] # return the raw text
+
+
 def print_container(ctr, depth=0, debug=0):
-    """Print summary of Thread to stdout."""
+    """Print summary of Thread to console."""
+
+    global thread_length
+
     if 'message' in ctr:
         if debug:
             message = repr(ctr) + ' ' + repr(ctr['message'] and ctr['message'].subject)
         else:
-            message = str(ctr['message'] and ctr['message'].subject)
+            message = str(ctr['message'] and ctr['message'].subject) + " :: " + str(get_content(ctr['message'], 120))
+
     else:
         message = str(ctr)
+
+    if depth == 0:
+        print("\n")
 
     print(''.join(['> ' * depth, message]))
 
     for child in ctr.children:
         print_container(child, depth + 1, debug)
 
+    if len(ctr.children) == 0:
+        print('Thread length:' + str(depth))
+        if depth not in thread_length:
+            thread_length[depth + 1] = 1
+        else:
+            thread_length[depth + 1] += 1
+
+
+thread_length = {}
 
 def main():
     import mailbox
     import sys
 
     msglist = []
+
+    global thread_length
 
     print('Reading input file...')
     mbox = mailbox.mbox(sys.argv[1])
@@ -583,9 +622,17 @@ def main():
     print('Threading...')
     threads = thread(msglist)
 
+    threads = sort_threads(threads, key='depth', missing_value='z')
+
     print('Output...')
     for container in threads:
         print_container(container)
+
+    print("\n\nThread lengths:")
+    for i in sorted(thread_length):
+        print("L:" + str(i) + "#:" + str(thread_length[i]))
+
+
 
 if __name__ == "__main__":
     main()

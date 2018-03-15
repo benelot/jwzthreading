@@ -43,6 +43,19 @@ def main():
 
     msglist = []
 
+    # using pandas mails
+    # mail_recs = mails_df.to_records()
+    # 
+    # msglist = []
+    #
+    # for rec in mail_recs:
+    #     try:
+    #         message = email.message_from_string(rec['Raw'])
+    #         parsed_msg = jwzthreading.Message(message)
+    #     except ValueError:
+    #         continue
+    #     msglist.append(parsed_msg)
+
     print('Reading input file...')
     mbox = mailbox.mbox(sys.argv[1])
     for message in mbox:

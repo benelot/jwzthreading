@@ -594,7 +594,7 @@ def print_container(ctr, depth=0, debug=0):
 
     if len(ctr.children) == 0:
         print('Thread length:' + str(depth))
-        if depth not in thread_length:
+        if depth + 1 not in thread_length:
             thread_length[depth + 1] = 1
         else:
             thread_length[depth + 1] += 1

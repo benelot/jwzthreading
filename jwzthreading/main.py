@@ -1,4 +1,5 @@
 from jwzthreading import Message, thread
+# import email
 
 def print_container(ctr, depth=0, debug=0):
     """Print summary of Thread to stdout."""
@@ -45,13 +46,12 @@ def main():
 
     # using pandas mails
     # mail_recs = mails_df.to_records()
-    # 
-    # msglist = []
+    #
     #
     # for rec in mail_recs:
     #     try:
     #         message = email.message_from_string(rec['Raw'])
-    #         parsed_msg = jwzthreading.Message(message)
+    #         parsed_msg = Message(message)
     #     except ValueError:
     #         continue
     #     msglist.append(parsed_msg)
